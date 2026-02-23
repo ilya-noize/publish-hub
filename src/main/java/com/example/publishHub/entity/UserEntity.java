@@ -55,7 +55,7 @@ public class UserEntity {
     private UserProfileEntity userProfile;
 
     @OneToMany(
-            mappedBy = "user",
+            mappedBy = "author",
             fetch = FetchType.LAZY,
             cascade = {PERSIST, MERGE, REFRESH}
     )
