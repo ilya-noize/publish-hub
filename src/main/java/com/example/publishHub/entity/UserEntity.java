@@ -18,10 +18,7 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static jakarta.persistence.CascadeType.MERGE;
-import static jakarta.persistence.CascadeType.PERSIST;
-import static jakarta.persistence.CascadeType.REFRESH;
+import java.util.StringJoiner;
 
 @Entity
 @Table(name = "usr")
@@ -50,17 +47,30 @@ public class UserEntity {
 
     @OneToOne(
             mappedBy = "user",
-            cascade = CascadeType.ALL
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
     )
     private UserProfileEntity userProfile;
 
     @OneToMany(
             mappedBy = "author",
             fetch = FetchType.LAZY,
-            cascade = {PERSIST, MERGE, REFRESH}
+            cascade = {CascadeType.ALL},
+            orphanRemoval = true
     )
     private List<PostEntity> posts = new ArrayList<>();
 
     // todo add roles
     //  (USER_ROLE, ADMIN_ROLE, MODERATOR_ROLE)
+
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", UserEntity.class.getSimpleName() + "[", "]")
+                .add("id=" + id)
+                .add("name='" + name + "'")
+                .add("email='" + email + "'")
+                .add("userProfile=" + userProfile)
+                .toString();
+    }
 }

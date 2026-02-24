@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<PostEntity, Long> {
 
@@ -18,10 +17,10 @@ public interface PostRepository extends JpaRepository<PostEntity, Long> {
 
     // - Найти посты с комментариями (используйте @EntityGraph)
     @EntityGraph(attributePaths = {"comments"})
-    List<PostEntity> findAllByComments_ApprovedNot(boolean approved);;
+    List<PostEntity> findAllByComments_ApprovedNot(boolean approved);
 
     // - Найти посты созданные после указанной даты
     List<PostEntity> findAllByCreatedAtAfter(LocalDateTime createdAt);
 
-    PostEntity findByAuthor_IdAndId(Long id, Long id1);
+    PostEntity findByAuthor_IdAndId(Long authorId, Long id);
 }

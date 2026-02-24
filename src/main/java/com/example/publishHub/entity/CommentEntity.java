@@ -17,9 +17,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.StringJoiner;
 
 @Entity
-@Table
+@Table(name = "comments")
 @Setter
 @Getter
 @Builder
@@ -68,5 +69,15 @@ public class CommentEntity {
     public void created() {
         this.createdAt = LocalDateTime.now();
         this.approved = false;
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", CommentEntity.class.getSimpleName() + "[", "]")
+                .add("id=" + id)
+                .add("content='" + content + "'")
+                .add("createdAt=" + createdAt)
+                .add("approved=" + approved)
+                .toString();
     }
 }

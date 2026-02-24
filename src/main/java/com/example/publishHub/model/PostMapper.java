@@ -8,19 +8,22 @@ import org.mapstruct.MappingConstants;
 @Mapper(
         uses = {
                 UserMapper.class,
-                PostMapper.class
+                CommentMapper.class
         },
         componentModel = MappingConstants.ComponentModel.SPRING
 )
 public interface PostMapper {
 
+    @Mapping(target = "author.id", source = "authorId")
     @Mapping(target = "createdAt", ignore = true)
     PostEntity toEntity(PostDto dto);
 
+    @Mapping(target = "authorId", source = "author.id")
     PostDto toDomain(PostEntity entity);
 
-    @Mapping(target = "author.id", source = "authorId")
+    @Mapping(target = "authorId", source = "authorId")
     PostDto toDomain(PostRequest request);
 
+    @Mapping(target = "author.id", source = "authorId")
     PostResponse toResponse(PostDto dto);
 }

@@ -21,9 +21,10 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 
 @Entity
-@Table
+@Table(name = "posts")
 @Setter
 @Getter
 @Builder
@@ -61,12 +62,22 @@ public class PostEntity {
     @OneToMany(
             mappedBy = "post",
             fetch = FetchType.LAZY,
-            cascade = {CascadeType.ALL}
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+            orphanRemoval = true
     )
     private List<CommentEntity> comments = new ArrayList<>();
 
     @PrePersist
     void create() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", PostEntity.class.getSimpleName() + "[", "]")
+                .add("id=" + id)
+                .add("title='" + title + "'")
+                .add("content='" + content + "'")
+                .toString();
     }
 }

@@ -11,9 +11,8 @@ import org.mapstruct.MappingConstants;
 )
 public interface UserProfileMapper {
 
-    @Mapping(target = "user.id", source = "id")
+    @Mapping(target = "user", ignore = true)
     UserProfileEntity toEntity(UserProfileDto dto);
 
-    @Mapping(target = "userId", source = "user.id")
     UserProfileDto toDomain(UserProfileEntity entity);
 }

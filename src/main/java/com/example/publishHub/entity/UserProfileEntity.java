@@ -15,6 +15,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.StringJoiner;
+
 
 @Entity
 @Table(name = "profiles")
@@ -32,6 +34,18 @@ public class UserProfileEntity {
     private String summary;
 
     @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
+    @JoinColumn(
+            name = "user_id",
+            referencedColumnName = "id",
+            nullable = false
+    )
     private UserEntity user;
+
+    @Override
+    public String toString() {
+        return new StringJoiner(", ", UserProfileEntity.class.getSimpleName() + "[", "]")
+                .add("id=" + id)
+                .add("summary='" + summary + "'")
+                .toString();
+    }
 }
