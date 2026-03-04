@@ -123,4 +123,12 @@ class BlogControllerTest extends TestContainer {
         );
         return users;
     }
+
+    @Test
+    void shouldNotProduceNPlusOneQueries() {
+        // TODO: Напишите тесты которые проверяют:
+        // - Количество SQL запросов при загрузке постов с комментариями
+        // - Отсутствие дополнительных запросов при обращении к связанным данным
+        // - Корректность загруженных данных
+    }
 }

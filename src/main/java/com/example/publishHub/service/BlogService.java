@@ -204,4 +204,27 @@ public class BlogService {
                         )
                 ));
     }
+
+    /**
+     * Последние посты с комментариями
+     */
+    public List<PostDto> getRecentPostsWithComments() {
+        return List.of();
+    }
+
+    /**
+     * Посты по тегу с комментариями и авторами
+     * @return
+     */
+    public List<PostDto> getPostsByTagWithDetails() {
+        return null;
+    }
+
+    /**
+     * Активность пользователя с постами и комментариями
+     * @return
+     */
+    public List<PostDto> getUserActivity() {
+        return null;
+    }
 }

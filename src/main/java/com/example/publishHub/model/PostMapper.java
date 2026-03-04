@@ -14,6 +14,8 @@ import org.mapstruct.MappingConstants;
 )
 public interface PostMapper {
 
+    @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "commentCount", ignore = true)
     @Mapping(target = "author.id", source = "authorId")
     @Mapping(target = "createdAt", ignore = true)
     PostEntity toEntity(PostDto dto);

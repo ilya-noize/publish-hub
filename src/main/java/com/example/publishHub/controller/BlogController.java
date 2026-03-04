@@ -106,4 +106,28 @@ public class BlogController {
     ) {
         return blogService.getPostsByAuthor(userId);
     }
+
+    @GetMapping("/users/{userId}")
+    public List<PostResponse> getRecentPostsWithComments() {
+        return blogService.getRecentPostsWithComments()
+                .stream()
+                .map(postMapper::toResponse)
+                .toList();
+    }
+
+    @GetMapping("/users/{userId}")
+    public List<PostResponse> getPostsByTagWithDetails () {
+        return blogService.getPostsByTagWithDetails()
+                .stream()
+                .map(postMapper::toResponse)
+                .toList();
+    }
+
+    @GetMapping("/users/{userId}")
+    public List<PostResponse> getUserActivity() {
+        return blogService.getUserActivity()
+                .stream()
+                .map(postMapper::toResponse)
+                .toList();
+    }
 }
