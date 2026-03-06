@@ -23,9 +23,16 @@ public interface PostMapper {
     @Mapping(target = "authorId", source = "author.id")
     PostDto toDomain(PostEntity entity);
 
+    @Mapping(target = "authorId", source = "author.id")
+    PostSimpleDto toSimpleDomain(PostEntity entity);
+
     @Mapping(target = "authorId", source = "authorId")
-    PostDto toDomain(PostRequest request);
+    PostDto toDomain(PostCreateRequest request);
 
     @Mapping(target = "author.id", source = "authorId")
     PostResponse toResponse(PostDto dto);
+
+    @Mapping(target = "comments", ignore = true)
+    @Mapping(target = "author.id", source = "authorId")
+    PostResponse toResponse(PostSimpleDto dto);
 }

@@ -1,31 +1,204 @@
 package com.example.publishHub.service;
 
+import com.example.publishHub.model.UserPostCommentIDsParameters;
+import com.example.publishHub.entity.CommentEntity;
+import com.example.publishHub.entity.PostEntity;
+import com.example.publishHub.model.CommentDto;
+import com.example.publishHub.model.CommentMapper;
 import com.example.publishHub.model.PostDto;
+import com.example.publishHub.model.PostMapper;
+import com.example.publishHub.model.PostProjectionDto;
+import com.example.publishHub.model.PostSimpleDto;
+import com.example.publishHub.repository.CommentRepository;
 import com.example.publishHub.repository.PostRepository;
+import com.example.publishHub.repository.PostWithCommentCountProjection;
+import com.example.publishHub.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 
 import java.awt.print.Pageable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 
-//@Service
+@Service
+@RequiredArgsConstructor
 public class PostService {
+    private static final Logger log = LogManager.getLogger(PostService.class);
     private final PostRepository postRepository;
-
-    public PostService(PostRepository postRepository) {
-        this.postRepository = postRepository;
-    }
-
-
-    public PostDto createPost(PostDto domain) {
-//        postRepository
-        return null;
-    }
-
-    public PostDto getById(Long id) {
-        return null;
-    }
+    private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
+    private final PostMapper postMapper;
+    private final CommentMapper commentMapper;
 
     public Page<PostDto> getAllPosts(Pageable pageable) {
+        return null;
+    }
+
+    /** Получение поста по ID     */
+    public PostSimpleDto getById(Long postId) {
+        log.debug("Get Post. ID:{}.", postId);
+        PostEntity postEntity = postRepository.findById(postId)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "No such post by ID:%s".formatted(postId)
+                ));
+        return postMapper.toSimpleDomain(postEntity);
+    }
+
+    /** Получение поста автора со всеми комментариями     */
+    public PostDto getPostWithComments(UserPostCommentIDsParameters userPostCommentIDsParameters) {
+        Long postId = userPostCommentIDsParameters.postId();
+        Long authorId = userPostCommentIDsParameters.userId();
+        log.debug("Get author's post with Comments. post ID:{}, author ID:{}.", postId, authorId);
+        PostEntity postEntity = postRepository.findByIdAndAuthor_Id(postId, authorId)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "No such post by ID:%s".formatted(postId)
+                ));
+        return postMapper.toDomain(postEntity);
+    }
+
+    /** Получение поста со всеми комментариями     */
+    public PostDto getPostComments(Long postId) {
+        log.debug("Get Post with Comments. ID:{}.", postId);
+        PostEntity postEntity = postRepository.findById(postId)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "No such post by ID:%s".formatted(postId)
+                ));
+        return postMapper.toDomain(postEntity);
+    }
+
+    /** Получение комментария поста     */
+    public CommentDto getPostCommentById(Long postId, Long commentId) {
+        if (!postRepository.existsById(postId)) {
+            throw new NoSuchElementException("No such post by ID:%s".formatted(postId));
+        }
+        CommentEntity comment = commentRepository.findByIdAndPost_IdAndApprovedNot(commentId, postId, true)
+                .orElseThrow(() -> new NoSuchElementException("No such approved comment ID:%s in Post ID:%s"
+                        .formatted(commentId, postId)
+                ));
+        return commentMapper.toDomain(comment);
+    }
+
+    /** Создание поста с начальными комментариями     */
+    public PostDto createPostWithComments(
+            Long userId,
+            PostDto postDto
+    ) {
+        log.debug("create Post with Comments. DTO:{}.", postDto);
+        if (!postDto.authorId().equals(userId)) {
+            throw new IllegalArgumentException(
+                    "The author's ID:%s and the current user's ID:%s must be the same."
+                            .formatted(postDto.authorId(), userId));
+        }
+        PostEntity post = postMapper.toEntity(postDto);
+        List<CommentEntity> comments = post.getComments();
+        post.setComments(new ArrayList<>());
+        postRepository.save(post);
+
+        if (!comments.isEmpty()) {
+            List<CommentEntity> commentEntities = comments.stream()
+                    .peek(comment -> {
+                        comment.setPost(post);
+                        Long authorCommentId = comment.getUser().getId();
+                        comment.setUser(userRepository.findById(authorCommentId)
+                                .orElseThrow(() -> new NoSuchElementException("No such user ID:%s"
+                                        .formatted(authorCommentId))));
+                    })
+                    .map(commentRepository::save)
+                    .toList();
+            post.setComments(commentEntities);
+        }
+
+        return postMapper.toDomain(post);
+    }
+
+    /** Удаление всех комментариев из поста     */
+    public void deletePostComments(UserPostCommentIDsParameters parameters) {
+        validateParameters(parameters);
+        Long userId = parameters.userId();
+        Long postId = parameters.postId();
+        int deleted = commentRepository.deleteByPost_Id(postId);
+        log.debug("Removed {} comments in post ID:{}, author ID:{}", deleted, postId, userId);
+    }
+
+    /** Удаление комментария по ID     */
+    public void deletePostCommentsById(UserPostCommentIDsParameters parameters) {
+        validateParameters(parameters);
+
+        Long commentId = parameters.commentId();
+        Long userId = parameters.userId();
+        Long postId = parameters.postId();
+        if (!commentRepository.existsByIdAndUser_IdAndPost_Id(commentId, postId, userId)) {
+            throw new NoSuchElementException("No such comment by ID:%s in post by ID:%s , author ID:%s"
+                    .formatted(commentId, postId, userId)
+            );
+        }
+
+        int deleted = commentRepository.deleteByIdAndPost_IdAndUser_Id(commentId, postId, userId);
+        log.debug("Removed {} comments by ID:{} in post ID:{}, author ID:{}", deleted, commentId, postId, userId);
+    }
+
+    /** Комментарий к посту по ID     */
+    public CommentDto getPostCommentsById(UserPostCommentIDsParameters parameters) {
+        validateParameters(parameters);
+        Long commentId = parameters.commentId();
+        Long userId = parameters.userId();
+        Long postId = parameters.postId();
+        CommentEntity comment = commentRepository.findByIdAndUser_IdAndPost_Id(commentId, userId, postId).orElseThrow(
+                () -> new NoSuchElementException("No such comment By ID:%s, author by ID:%s in post by ID:%s"
+                        .formatted(commentId, userId, postId)
+                ));
+
+        return commentMapper.toDomain(comment);
+    }
+
+    /** Посты по тегу с комментариями и авторами     */
+    public List<PostDto> getPostsByTagWithDetails(List<String> tags) {
+        List<PostEntity> byTagsWithComments = postRepository.findByTagsWithComments(tags);
+
+        return byTagsWithComments.stream()
+                .map(postMapper::toDomain)
+                .toList();
+    }
+
+    /** Популярные посты     */
+    public List<PostProjectionDto> getPopularPosts() {
+        List<PostWithCommentCountProjection> popularPosts = postRepository.findPopularPosts();
+
+        return popularPosts.isEmpty() ? List.of()
+                : popularPosts.stream()
+                .dropWhile(Objects::isNull)
+                .map(this::toProjection)
+                .toList();
+    }
+
+    /** Валидация переменных пути */
+    private void validateParameters(UserPostCommentIDsParameters parameters) {
+        if (!userRepository.existsById(parameters.userId())) {
+            throw new NoSuchElementException("No such user by ID:%s".formatted(parameters.userId()));
+        }
+        if (!postRepository.existsByIdAndAuthor_Id(parameters.postId(), parameters.userId())) {
+            throw new NoSuchElementException("User by ID:%s is not author's post by ID:%s"
+                    .formatted(parameters.userId(), parameters.postId())
+            );
+        }
+    }
+
+    /** Конвертор Проекции в ДТО     */
+    private PostProjectionDto toProjection(PostWithCommentCountProjection projection) {
+        return new PostProjectionDto(
+                projection.getId(),
+                projection.getTitle(),
+                projection.getCommentCount()
+        );
+    }
+
+    /** @see com.example.publishHub.controller.PostController#getPostsByAllTags() */
+    public List<PostDto> getPostTags() {
         return null;
     }
 }

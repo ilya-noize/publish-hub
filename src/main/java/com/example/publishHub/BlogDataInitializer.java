@@ -1,5 +1,6 @@
 package com.example.publishHub;
 
+import com.example.publishHub.model.UserPostCommentIDsParameters;
 import com.example.publishHub.entity.CommentEntity;
 import com.example.publishHub.entity.PostEntity;
 import com.example.publishHub.entity.UserEntity;
@@ -9,6 +10,8 @@ import com.example.publishHub.model.PostDto;
 import com.example.publishHub.model.PostMapper;
 import com.example.publishHub.model.PostShortDto;
 import com.example.publishHub.service.BlogService;
+import com.example.publishHub.service.CommentService;
+import com.example.publishHub.service.PostService;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -33,14 +36,12 @@ import java.util.stream.IntStream;
 @Profile("dev")
 @RequiredArgsConstructor
 public class BlogDataInitializer {
-    private static final Logger log = LogManager.getLogger(BlogDataInitializer.class);
-    
     public static final int USER_COUNT = 10;
     public static final int POSTS_PER_USER = 5;
     public static final int TOTAL_POST_COUNT = USER_COUNT * POSTS_PER_USER;
     public static final int COMMENTS_PER_POST = 5;
     public static final int TOTAL_COMMENT_COUNT = TOTAL_POST_COUNT * COMMENTS_PER_POST;
-
+    private static final Logger log = LogManager.getLogger(BlogDataInitializer.class);
 
     private final EasyRandomParameters parameters = new EasyRandomParameters()
             .randomize(field -> field.getName().equals("email"), () -> UUID.randomUUID() + "@test.com")
@@ -48,8 +49,10 @@ public class BlogDataInitializer {
     private final EasyRandom easyRandom = new EasyRandom(parameters);
 
     private final BlogService blogService;
-    private final PostMapper postMapper;
+    private final CommentService commentService;
+    private final PostService postService;
 
+    private final PostMapper postMapper;
 
     @PostConstruct
     @Transactional
@@ -59,15 +62,11 @@ public class BlogDataInitializer {
         // Создайте тестовые посты с комментариями
 
         log.debug("Initialize users ...");
-        final List<UserEntity> users = new ArrayList<>();
-        IntStream.range(0, USER_COUNT).forEach(i -> users.add(createUser()));
+        final List<UserEntity> users = initializeUsers();
         log.debug(" {} users saved.", blogService.createAll(users).size());
 
         log.debug("Initialize posts ... ");
-        final List<PostEntity> posts = new ArrayList<>();
-        for (UserEntity author : users) {
-            IntStream.range(0, POSTS_PER_USER).forEach(i -> posts.add(createPost(author)));
-        }
+        final List<PostEntity> posts = initializePosts(users);
 
 
         log.debug("Initialize comments ... ");
@@ -78,7 +77,7 @@ public class BlogDataInitializer {
         Map<Long, PostDto> postDtoMap = posts.stream()
                 .map(postMapper::toDomain)
                 .map(post -> {
-                    PostDto postWithComments = blogService.createPostWithComments(post.authorId(), post);
+                    PostDto postWithComments = postService.createPostWithComments(post.authorId(), post);
                     log.debug("Post with Comments saved: {}\n", postWithComments);
                     return postWithComments;
                 })
@@ -88,37 +87,38 @@ public class BlogDataInitializer {
 
         // addCommentToPost
         Long postId = getPostId(postDtoMap);
+        Long userId = users.get(generateIndex(users)).getId();
         CommentDto commentToPost = new CommentDto(
                 null,
-                getUserId(users),
+                userId,
                 postId,
                 easyRandom.nextObject(String.class)
         );
 
-        CommentDto addedCommentToPost = blogService.addCommentToPost(
-                commentToPost.userId(),
-                commentToPost.postId(),
+        CommentDto addedCommentToPost = commentService.addCommentToPost(
+                new UserPostCommentIDsParameters(commentToPost.userId(), commentToPost.postId(), commentToPost.id()),
                 commentToPost
         );
         log.debug("Add Comment by Post ID:{} saved:{}\n", commentToPost.postId(), addedCommentToPost);
 
         //getPostsByAuthor
         Map<Long, PostShortDto> postsByAuthor = blogService
-                .getPostsByAuthor(getUserId(users));
+                .getPostsByAuthor(userId);
         log.debug("Post by Author:{}\n", postsByAuthor);
 
         //getPostWithComments
-        PostDto postWithComments = blogService.getPostWithComments(getPostId(postDtoMap));
+        Long postIdByGet = getPostId(postDtoMap);
+        Long authorId = postDtoMap.get(postIdByGet).authorId();
+        PostDto postWithComments = postService.getPostWithComments(new UserPostCommentIDsParameters(authorId, postIdByGet, null));
         log.debug("Post with Comments:{}", postWithComments);
 
         //approveComment - автор поста подтверждает коммент другого пользователя
-        Long userId = postDtoMap.get(postId).authorId();
-        CommentDto approveComment = blogService.approveComment(
-                userId,
-                postId,
-                addedCommentToPost.id()
+        authorId = postDtoMap.get(postId).authorId();
+        CommentDto approveComment = commentService.validateComment(
+                new UserPostCommentIDsParameters(authorId, postId, addedCommentToPost.id()),
+                true
         );
-        log.debug("Approve Comment:{} (Author ID:{}, PostID:{})", approveComment, userId, postId);
+        log.debug("Approve Comment:{} (Author ID:{}, PostID:{})", approveComment, approveComment.userId(), approveComment.postId());
 
 
         //getPostsByAuthor
@@ -131,11 +131,7 @@ public class BlogDataInitializer {
 
     private Long getPostId(Map<Long, PostDto> postDtoMap) {
         List<PostDto> values = postDtoMap.values().stream().toList();
-        return values.get(easyRandom.nextInt(values.size())).id();
-    }
-
-    private Long getUserId(List<UserEntity> users) {
-        return users.get(easyRandom.nextInt(users.size())).getId();
+        return values.get(generateIndex(values)).id();
     }
 
     private void createComment(
@@ -143,7 +139,7 @@ public class BlogDataInitializer {
             List<PostEntity> posts
     ) {
         CommentEntity comment = easyRandom.nextObject(CommentEntity.class);
-        PostEntity post = posts.get(easyRandom.nextInt(posts.size()));
+        PostEntity post = posts.get(generateIndex(posts));
         comment.setPost(post);
 
         Predicate<UserEntity> userIsAuthor = u -> u.getId().equals(post.getAuthor().getId());
@@ -152,34 +148,47 @@ public class BlogDataInitializer {
                 .filter(userIsAuthor)
                 .toList();
         if (commentators.isEmpty()) commentators = users;
-        UserEntity user = commentators.get(easyRandom.nextInt(commentators.size()));
-        comment.setUser(user);
-
+        UserEntity user = commentators.get(generateIndex(commentators));
         comment.setId(null);
+        comment.setUser(user);
         comment.setCreatedAt(LocalDateTime.now());
         post.getComments().add(comment);
         log.debug("Generate Comment:{}", comment);
     }
 
-    private PostEntity createPost(
-            UserEntity author
-    ) {
-        PostEntity post = easyRandom.nextObject(PostEntity.class);
-        post.setId(null);
-        post.setAuthor(author);
-        post.setCreatedAt(LocalDateTime.now());
-        log.debug("Generate Post:{}", post);
-        return post;
+    private int generateIndex(List<?> posts) {
+        return easyRandom.nextInt(posts.size());
     }
 
-    private UserEntity createUser() {
+    private List<UserEntity> initializeUsers() {
+        return IntStream.range(0, USER_COUNT).mapToObj(this::createUser).toList();
+    }
+
+    private List<PostEntity> initializePosts(List<UserEntity> users) {
+        final List<PostEntity> posts = new ArrayList<>();
+        users.forEach(author -> IntStream.range(0, POSTS_PER_USER)
+                .forEach(i -> posts.add(createPost(author, i)))
+        );
+        return posts;
+    }
+
+    private UserEntity createUser(int i) {
         UserEntity user = easyRandom.nextObject(UserEntity.class);
         UserProfileEntity userProfile = easyRandom.nextObject(UserProfileEntity.class);
         user.setId(null);
         userProfile.setId(null);
         userProfile.setUser(user);
         user.setUserProfile(userProfile);
-        log.debug("Generate User:{}", user);
+        log.debug("Generate User #{}:{}", i, user);
         return user;
+    }
+
+    private PostEntity createPost(UserEntity author, int i) {
+        PostEntity post = easyRandom.nextObject(PostEntity.class);
+        post.setId(null);
+        post.setAuthor(author);
+        post.setCreatedAt(LocalDateTime.now());
+        log.debug("Generate Post #{}:{}", i, post);
+        return post;
     }
 }

@@ -48,9 +48,9 @@ import java.util.StringJoiner;
                         attributeNodes = @NamedAttributeNode("user")
                 )
         ),
-        //Для ленты с тегами и активностью
+        //Для ленты с тегами
         @NamedEntityGraph(
-                name = "post-with-tags-and-comments-count",
+                name = "post-with-tags",
                 attributeNodes = {
                         @NamedAttributeNode("tags")
                 }
@@ -102,7 +102,7 @@ public class PostEntity {
     )
     private List<CommentEntity> comments = new ArrayList<>();
 
-    @Formula("(SELECT COUNT(*) FROM CommentEntity c WHERE c.post_id = id)")
+    @Formula("(SELECT COUNT(*) FROM comments c WHERE c.post_id = id)")
     private Long commentCount;
 
     @ManyToMany(fetch = FetchType.LAZY)
