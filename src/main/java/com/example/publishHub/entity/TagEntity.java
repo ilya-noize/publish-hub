@@ -2,12 +2,9 @@ package com.example.publishHub.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,35 +14,29 @@ import lombok.Setter;
 
 import java.util.StringJoiner;
 
-
 @Entity
-@Table(name = "profiles")
+@Table(name = "tags")
 @Setter
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileEntity {
+public class TagEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "summary", nullable = false)
-    private String summary;
-
-    @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(
-            name = "user_id",
-            referencedColumnName = "id",
+    @Column(
+            name = "name",
             nullable = false
     )
-    private UserEntity user;
+    private String name;
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", UserProfileEntity.class.getSimpleName() + "[", "]")
+        return new StringJoiner(", ", TagEntity.class.getSimpleName() + "[", "]")
                 .add("id=" + id)
-                .add("summary='" + summary + "'")
+                .add("name='" + name + "'")
                 .toString();
     }
 }
