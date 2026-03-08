@@ -1,14 +1,13 @@
 package com.example.publishHub.controller;
 
 import com.example.publishHub.entity.UserEntity;
-import com.example.publishHub.model.CommentDto;
-import com.example.publishHub.model.PostDto;
-import com.example.publishHub.model.PostShortDto;
-import com.example.publishHub.model.UserPostCommentIDsParameters;
+import com.example.publishHub.model.comment.CommentDto;
+import com.example.publishHub.model.post.PostDto;
+import com.example.publishHub.model.post.PostShortDto;
+import com.example.publishHub.model.user.UserPostCommentIDsParameters;
 import com.example.publishHub.repository.UserRepository;
 import com.example.publishHub.service.BlogService;
-import com.example.publishHub.service.CommentService;
-import com.example.publishHub.service.PostService;
+import com.example.publishHub.service.ContentService;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -25,9 +24,7 @@ class BlogControllerTest extends TestContainer {
     @Autowired
     private BlogService blogService;
     @Autowired
-    private CommentService commentService;
-    @Autowired
-    private PostService postService;
+    private ContentService contentService;
 
     @Autowired
     private UserRepository userRepository;
@@ -37,7 +34,7 @@ class BlogControllerTest extends TestContainer {
         List<UserEntity> users = getUserEntities();
         UserEntity author = users.get(2);
         PostDto postDto = getPostWithComments(author, users);
-        PostDto postWithComments = postService.createPostWithComments(author.getId(), postDto);
+        PostDto postWithComments = blogService.createPostWithComments(author.getId(), postDto);
 
         Long postId = postWithComments.id();
         Assertions.assertNotNull(postId);
@@ -51,12 +48,12 @@ class BlogControllerTest extends TestContainer {
     void addCommentToPost() {
         List<UserEntity> users = getUserEntities();
         UserEntity author = users.get(2);
-        PostDto post = postService.createPostWithComments(
+        PostDto post = blogService.createPostWithComments(
                 author.getId(),
                 getPostWithComments(author, users)
         );
         UserEntity commentator = users.get(0);
-        CommentDto comment = commentService.addCommentToPost(
+        CommentDto comment = contentService.addCommentToPost(
                 new UserPostCommentIDsParameters(commentator.getId(), post.id(), null),
                 getCommentDto(commentator.getId(), post.id())
         );
@@ -67,12 +64,12 @@ class BlogControllerTest extends TestContainer {
     void shouldReturnListCommentsInPost() {
         List<UserEntity> users = getUserEntities();
         UserEntity author = users.get(2);
-        PostDto post = postService.createPostWithComments(
+        PostDto post = blogService.createPostWithComments(
                 author.getId(),
                 getPostWithComments(author, users)
         );
 
-        PostDto postWithComments = postService.getPostWithComments(new UserPostCommentIDsParameters(author.getId(), post.id(), null));
+        PostDto postWithComments = contentService.getPostWithComments(new UserPostCommentIDsParameters(author.getId(), post.id(), null));
         Assertions.assertEquals(10, postWithComments.comments().size());
     }
 
@@ -80,16 +77,16 @@ class BlogControllerTest extends TestContainer {
     void approveComment() {
         List<UserEntity> users = getUserEntities();
         UserEntity author = users.get(2);
-        PostDto post = postService.createPostWithComments(
+        PostDto post = blogService.createPostWithComments(
                 author.getId(),
                 getPostWithComments(author, users)
         );
         UserEntity commentator = users.get(0);
-        CommentDto comment = commentService.addCommentToPost(
+        CommentDto comment = contentService.addCommentToPost(
                 new UserPostCommentIDsParameters(commentator.getId(), post.id(), null),
                 getCommentDto(commentator.getId(), post.id())
         );
-        CommentDto commentApprove = commentService.validateComment(
+        CommentDto commentApprove = contentService.validateComment(
                 new UserPostCommentIDsParameters(author.getId(), post.id(), comment.id()),
                 true
         );
@@ -99,7 +96,7 @@ class BlogControllerTest extends TestContainer {
     void getPostsByAuthor() {
         List<UserEntity> users = getUserEntities();
         UserEntity author = users.get(2);
-        postService.createPostWithComments(
+        blogService.createPostWithComments(
                 author.getId(),
                 getPostWithComments(author, users)
         );

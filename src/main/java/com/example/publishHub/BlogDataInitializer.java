@@ -1,17 +1,16 @@
 package com.example.publishHub;
 
-import com.example.publishHub.model.UserPostCommentIDsParameters;
 import com.example.publishHub.entity.CommentEntity;
 import com.example.publishHub.entity.PostEntity;
 import com.example.publishHub.entity.UserEntity;
 import com.example.publishHub.entity.UserProfileEntity;
-import com.example.publishHub.model.CommentDto;
-import com.example.publishHub.model.PostDto;
-import com.example.publishHub.model.PostMapper;
-import com.example.publishHub.model.PostShortDto;
+import com.example.publishHub.model.comment.CommentDto;
+import com.example.publishHub.model.post.PostDto;
+import com.example.publishHub.model.post.PostMapper;
+import com.example.publishHub.model.post.PostShortDto;
+import com.example.publishHub.model.user.UserPostCommentIDsParameters;
 import com.example.publishHub.service.BlogService;
-import com.example.publishHub.service.CommentService;
-import com.example.publishHub.service.PostService;
+import com.example.publishHub.service.ContentService;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -49,8 +48,7 @@ public class BlogDataInitializer {
     private final EasyRandom easyRandom = new EasyRandom(parameters);
 
     private final BlogService blogService;
-    private final CommentService commentService;
-    private final PostService postService;
+    private final ContentService contentService;
 
     private final PostMapper postMapper;
 
@@ -77,7 +75,7 @@ public class BlogDataInitializer {
         Map<Long, PostDto> postDtoMap = posts.stream()
                 .map(postMapper::toDomain)
                 .map(post -> {
-                    PostDto postWithComments = postService.createPostWithComments(post.authorId(), post);
+                    PostDto postWithComments = blogService.createPostWithComments(post.authorId(), post);
                     log.debug("Post with Comments saved: {}\n", postWithComments);
                     return postWithComments;
                 })
@@ -95,7 +93,7 @@ public class BlogDataInitializer {
                 easyRandom.nextObject(String.class)
         );
 
-        CommentDto addedCommentToPost = commentService.addCommentToPost(
+        CommentDto addedCommentToPost = contentService.addCommentToPost(
                 new UserPostCommentIDsParameters(commentToPost.userId(), commentToPost.postId(), commentToPost.id()),
                 commentToPost
         );
@@ -109,12 +107,12 @@ public class BlogDataInitializer {
         //getPostWithComments
         Long postIdByGet = getPostId(postDtoMap);
         Long authorId = postDtoMap.get(postIdByGet).authorId();
-        PostDto postWithComments = postService.getPostWithComments(new UserPostCommentIDsParameters(authorId, postIdByGet, null));
+        PostDto postWithComments = contentService.getPostWithComments(new UserPostCommentIDsParameters(authorId, postIdByGet, null));
         log.debug("Post with Comments:{}", postWithComments);
 
         //approveComment - автор поста подтверждает коммент другого пользователя
         authorId = postDtoMap.get(postId).authorId();
-        CommentDto approveComment = commentService.validateComment(
+        CommentDto approveComment = contentService.validateComment(
                 new UserPostCommentIDsParameters(authorId, postId, addedCommentToPost.id()),
                 true
         );

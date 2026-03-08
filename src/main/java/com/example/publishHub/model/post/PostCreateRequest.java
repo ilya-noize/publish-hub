@@ -1,9 +1,10 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.post;
+
+import com.example.publishHub.model.comment.CommentDto;
 
 import java.util.List;
 
 public record PostCreateRequest(
-        Long id,
         String title,
         String content,
         Long authorId,

@@ -1,6 +1,8 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.post;
 
 import com.example.publishHub.entity.PostEntity;
+import com.example.publishHub.model.user.UserMapper;
+import com.example.publishHub.model.comment.CommentMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
@@ -26,6 +28,7 @@ public interface PostMapper {
     @Mapping(target = "authorId", source = "author.id")
     PostSimpleDto toSimpleDomain(PostEntity entity);
 
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "authorId", source = "authorId")
     PostDto toDomain(PostCreateRequest request);
 

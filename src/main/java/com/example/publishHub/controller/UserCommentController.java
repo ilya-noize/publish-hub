@@ -1,14 +1,13 @@
 package com.example.publishHub.controller;
 
-import com.example.publishHub.model.CommentDto;
-import com.example.publishHub.model.CommentMapper;
-import com.example.publishHub.model.CommentRequest;
-import com.example.publishHub.model.CommentResponse;
-import com.example.publishHub.model.PostDto;
-import com.example.publishHub.model.PostMapper;
-import com.example.publishHub.model.UserPostCommentIDsParameters;
-import com.example.publishHub.service.CommentService;
-import com.example.publishHub.service.PostService;
+import com.example.publishHub.model.comment.CommentDto;
+import com.example.publishHub.model.comment.CommentMapper;
+import com.example.publishHub.model.comment.CommentRequest;
+import com.example.publishHub.model.comment.CommentResponse;
+import com.example.publishHub.model.post.PostDto;
+import com.example.publishHub.model.post.PostMapper;
+import com.example.publishHub.model.user.UserPostCommentIDsParameters;
+import com.example.publishHub.service.ContentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -27,8 +26,7 @@ import java.util.List;
 @RequestMapping("/users/{userId}/posts/{postId}/comments")
 @RequiredArgsConstructor
 public class UserCommentController {
-    private final CommentService commentService;
-    private final PostService postService;
+    private final ContentService contentService;
 
     private final CommentMapper commentMapper;
     private final PostMapper postMapper;
@@ -38,7 +36,7 @@ public class UserCommentController {
             UserPostCommentIDsParameters userPostCommentIDsParameters,
             @RequestBody @Valid CommentRequest request
     ) {
-        CommentDto commentDto = commentService.addCommentToPost(
+        CommentDto commentDto = contentService.addCommentToPost(
                 userPostCommentIDsParameters,
                 commentMapper.toDomain(request)
         );
@@ -48,7 +46,7 @@ public class UserCommentController {
 
     @GetMapping
     public List<CommentResponse> getUsersCommentsInPost(UserPostCommentIDsParameters userPostCommentIDsParameters) {
-        PostDto postWithComments = postService.getPostWithComments(userPostCommentIDsParameters);
+        PostDto postWithComments = contentService.getPostWithComments(userPostCommentIDsParameters);
 
         return postMapper.toResponse(postWithComments)
                 .comments()
@@ -64,31 +62,31 @@ public class UserCommentController {
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletePostComments(UserPostCommentIDsParameters userPostCommentIDsParameters) {
-        postService.deletePostComments(userPostCommentIDsParameters);
+        contentService.deletePostComments(userPostCommentIDsParameters);
     }
 
     @DeleteMapping("/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletePostCommentsById(UserPostCommentIDsParameters userPostCommentIDsParameters) {
-        postService.deletePostCommentsById(userPostCommentIDsParameters);
+        contentService.deletePostCommentsById(userPostCommentIDsParameters);
     }
 
     @GetMapping("/{commentId}")
     public CommentResponse getPostCommentsById(UserPostCommentIDsParameters userPostCommentIDsParameters) {
-        CommentDto postCommentsById = postService.getPostCommentsById(userPostCommentIDsParameters);
+        CommentDto postCommentsById = contentService.getPostCommentsById(userPostCommentIDsParameters);
 
         return commentMapper.toResponse(postCommentsById);
     }
 
     @PatchMapping("/{commentId}/approve")
     public CommentResponse approveComment(UserPostCommentIDsParameters userPostCommentIDsParameters) {
-        CommentDto dto = commentService.validateComment(userPostCommentIDsParameters, true);
+        CommentDto dto = contentService.validateComment(userPostCommentIDsParameters, true);
         return commentMapper.toResponse(dto);
     }
 
     @PatchMapping("/{commentId}/reject")
     public CommentResponse rejectComment(UserPostCommentIDsParameters userPostCommentIDsParameters) {
-        CommentDto dto = commentService.validateComment(userPostCommentIDsParameters, false);
+        CommentDto dto = contentService.validateComment(userPostCommentIDsParameters, false);
         return commentMapper.toResponse(dto);
     }
 

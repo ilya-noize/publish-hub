@@ -1,14 +1,15 @@
 package com.example.publishHub.service;
 
-import com.example.publishHub.model.UserPostCommentIDsParameters;
 import com.example.publishHub.entity.CommentEntity;
 import com.example.publishHub.entity.PostEntity;
-import com.example.publishHub.model.CommentDto;
-import com.example.publishHub.model.CommentMapper;
-import com.example.publishHub.model.PostDto;
-import com.example.publishHub.model.PostMapper;
-import com.example.publishHub.model.PostProjectionDto;
-import com.example.publishHub.model.PostSimpleDto;
+import com.example.publishHub.entity.UserEntity;
+import com.example.publishHub.model.comment.CommentDto;
+import com.example.publishHub.model.comment.CommentMapper;
+import com.example.publishHub.model.post.PostDto;
+import com.example.publishHub.model.post.PostMapper;
+import com.example.publishHub.model.post.PostProjectionDto;
+import com.example.publishHub.model.post.PostSimpleDto;
+import com.example.publishHub.model.user.UserPostCommentIDsParameters;
 import com.example.publishHub.repository.CommentRepository;
 import com.example.publishHub.repository.PostRepository;
 import com.example.publishHub.repository.PostWithCommentCountProjection;
@@ -18,25 +19,27 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.awt.print.Pageable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
-public class PostService {
-    private static final Logger log = LogManager.getLogger(PostService.class);
+public class ContentService {
+    private static final Logger log = LogManager.getLogger(ContentService.class);
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
+
     private final PostMapper postMapper;
     private final CommentMapper commentMapper;
 
     public Page<PostDto> getAllPosts(Pageable pageable) {
-        return null;
+        throw new ResourceAccessException("Access Denied");
     }
 
     /** Получение поста по ID     */
@@ -83,40 +86,7 @@ public class PostService {
         return commentMapper.toDomain(comment);
     }
 
-    /** Создание поста с начальными комментариями     */
-    public PostDto createPostWithComments(
-            Long userId,
-            PostDto postDto
-    ) {
-        log.debug("create Post with Comments. DTO:{}.", postDto);
-        if (!postDto.authorId().equals(userId)) {
-            throw new IllegalArgumentException(
-                    "The author's ID:%s and the current user's ID:%s must be the same."
-                            .formatted(postDto.authorId(), userId));
-        }
-        PostEntity post = postMapper.toEntity(postDto);
-        List<CommentEntity> comments = post.getComments();
-        post.setComments(new ArrayList<>());
-        postRepository.save(post);
-
-        if (!comments.isEmpty()) {
-            List<CommentEntity> commentEntities = comments.stream()
-                    .peek(comment -> {
-                        comment.setPost(post);
-                        Long authorCommentId = comment.getUser().getId();
-                        comment.setUser(userRepository.findById(authorCommentId)
-                                .orElseThrow(() -> new NoSuchElementException("No such user ID:%s"
-                                        .formatted(authorCommentId))));
-                    })
-                    .map(commentRepository::save)
-                    .toList();
-            post.setComments(commentEntities);
-        }
-
-        return postMapper.toDomain(post);
-    }
-
-    /** Удаление всех комментариев из поста     */
+        /** Удаление всех комментариев из поста     */
     public void deletePostComments(UserPostCommentIDsParameters parameters) {
         validateParameters(parameters);
         Long userId = parameters.userId();
@@ -176,6 +146,68 @@ public class PostService {
                 .toList();
     }
 
+    /** Подтверждение комментария     */
+    @Transactional
+    public CommentDto validateComment(UserPostCommentIDsParameters parameters,
+                                      Boolean isApproved
+    ) {
+        Long commentId = parameters.commentId();
+        Long userId = parameters.userId();
+        Long postId = parameters.postId();
+
+        log.debug("Approve Comment ID:{} User's ID:{} by Post ID:{}.", commentId, userId, postId);
+
+        CommentEntity comment = commentRepository.findByIdAndPost_IdAndApprovedNot(commentId, postId, true)
+                .orElseThrow(() -> new NoSuchElementException("No such approved comment ID:%s in Post ID:%s"
+                        .formatted(commentId, postId)
+                ));
+        CommentDto domain = commentMapper.toDomain(comment);
+        validateRequestParameters(parameters, domain);
+        comment.setApproved(isApproved);
+
+        return commentMapper.toDomain(commentRepository.save(comment));
+    }
+
+    /** Добавление комментария к посту */
+    @Transactional
+    public CommentDto addCommentToPost(UserPostCommentIDsParameters parameters,
+                                       CommentDto commentDto
+    ) {
+        log.debug("Add Comment to Post. DTO:{}.", commentDto);
+        validateRequestParameters(parameters, commentDto);
+        UserEntity user = userRepository.findById(commentDto.userId())
+                .orElseThrow(() -> new NoSuchElementException(
+                        "No such user by ID:%s".formatted(commentDto.userId())
+                ));
+        PostEntity post = postRepository.findById(commentDto.postId())
+                .orElseThrow(() -> new NoSuchElementException(
+                        "No such post by ID:%s".formatted(commentDto.postId())
+                ));
+        CommentEntity comment = commentRepository.save(CommentEntity.builder()
+                .post(post)
+                .user(user)
+                .content(commentDto.content())
+                .build());
+
+        return commentMapper.toDomain(comment);
+    }
+
+    private void validateRequestParameters(UserPostCommentIDsParameters parameters, CommentDto commentDto) {
+        Long userId = parameters.userId();
+        Long postId = parameters.postId();
+        if (!commentDto.userId().equals(userId)) {
+            throw new IllegalArgumentException(
+                    "The commentator's ID:%s and the current user's ID:%s must be the same."
+                            .formatted(commentDto.userId(), userId)
+            );
+        } else if (!commentDto.postId().equals(postId)) {
+            throw new IllegalArgumentException(
+                    "The post's ID:%s and the current post's ID:%s must be the same."
+                            .formatted(commentDto.postId(), postId)
+            );
+        }
+    }
+
     /** Валидация переменных пути */
     private void validateParameters(UserPostCommentIDsParameters parameters) {
         if (!userRepository.existsById(parameters.userId())) {
@@ -199,6 +231,6 @@ public class PostService {
 
     /** @see com.example.publishHub.controller.PostController#getPostsByAllTags() */
     public List<PostDto> getPostTags() {
-        return null;
+        throw new ResourceAccessException("Access Denied");
     }
 }

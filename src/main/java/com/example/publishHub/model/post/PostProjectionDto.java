@@ -1,4 +1,4 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.post;
 
 public record PostProjectionDto(
         Long id,

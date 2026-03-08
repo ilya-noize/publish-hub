@@ -1,4 +1,4 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.user;
 
 import jakarta.validation.constraints.Positive;
 
