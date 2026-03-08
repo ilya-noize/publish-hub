@@ -1,109 +1,84 @@
 package com.example.publishHub.controller;
 
-import com.example.publishHub.model.CommentDto;
-import com.example.publishHub.model.CommentMapper;
-import com.example.publishHub.model.CommentRequest;
-import com.example.publishHub.model.CommentResponse;
-import com.example.publishHub.model.PostDto;
-import com.example.publishHub.model.PostMapper;
-import com.example.publishHub.model.PostRequest;
-import com.example.publishHub.model.PostResponse;
-import com.example.publishHub.model.PostShortDto;
+import com.example.publishHub.model.comment.CommentMapper;
+import com.example.publishHub.model.comment.CommentResponse;
+import com.example.publishHub.model.post.PostCreateRequest;
+import com.example.publishHub.model.post.PostDto;
+import com.example.publishHub.model.post.PostMapper;
+import com.example.publishHub.model.post.PostResponse;
+import com.example.publishHub.model.post.PostShortDto;
 import com.example.publishHub.service.BlogService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
 
 @RestController
+@RequestMapping("/users/{userId}")
+@RequiredArgsConstructor
 public class BlogController {
     private final BlogService blogService;
+
     private final PostMapper postMapper;
     private final CommentMapper commentMapper;
 
-    public BlogController(
-            BlogService blogService, PostMapper postMapper,
-            CommentMapper commentMapper
-    ) {
-        this.blogService = blogService;
-        this.postMapper = postMapper;
-        this.commentMapper = commentMapper;
-    }
-
-    @PostMapping("/users/{userId}/posts")
+    @PostMapping("/posts")
     public PostResponse createPostWithComments(
             @PathVariable Long userId,
-            @RequestBody @Valid PostRequest postRequest
+            @RequestBody @Valid PostCreateRequest postCreateRequest
     ) {
-        PostDto domain = postMapper.toDomain(postRequest);
+        PostDto domain = postMapper.toDomain(postCreateRequest);
         PostDto postWithComments = blogService.createPostWithComments(userId, domain);
 
         return postMapper.toResponse(postWithComments);
     }
 
-    @PostMapping("/users/{userId}/posts/{postId}")
-    public CommentResponse addCommentToPost(
-            @PathVariable("userId") Long userId,
-            @PathVariable("postId") Long postId,
-            @RequestBody @Valid CommentRequest request
+    @GetMapping("/posts")
+    public Map<Long, PostShortDto> getPostsByAuthor(
+            @PathVariable Long userId
     ) {
-        CommentDto commentDto = blogService.addCommentToPost(
-                userId,
-                postId,
-                commentMapper.toDomain(request)
-        );
-
-        return commentMapper.toResponse(commentDto);
+        Map<Long, PostShortDto> postsByAuthor = blogService.getPostsByAuthor(userId);
+        return postsByAuthor.isEmpty() ? null
+                : postsByAuthor;
     }
 
-    @GetMapping("/posts/{postId}")
-    public PostResponse getPostWithComments(
-            @PathVariable Long postId
+    @GetMapping("/comments")
+    public List<CommentResponse> getAllUserComments(
+            @PathVariable Long userId
     ) {
-        PostDto postWithComments = blogService.getPostWithComments(postId);
-
-        return postMapper.toResponse(postWithComments);
-    }
-
-
-    @GetMapping("/posts/{postId}/comments")
-    public List<CommentResponse> getPostComments(
-            @PathVariable Long postId
-    ) {
-        PostDto postWithComments = blogService.getPostWithComments(postId);
-
-        return postMapper.toResponse(postWithComments)
-                .comments()
-                .stream()
-                .map(c -> new CommentResponse(
-                        c.userId(),
-                        c.postId(),
-                        c.content()
-                ))
+        return blogService.getAllUserComments(userId).stream()
+                .map(commentMapper::toResponse)
                 .toList();
     }
 
-    @PatchMapping("/users/{userId}/posts/{postId}/comments/{commentId}")
-    public CommentResponse approveComment(
-            @PathVariable Long userId,
-            @PathVariable Long postId,
-            @PathVariable Long commentId
+    @GetMapping("/recent")
+    public List<PostResponse> getRecentPostsWithComments(
+            @PathVariable Long userId
     ) {
-        return commentMapper.toResponse(
-                blogService.approveComment(userId, postId, commentId)
-        );
+        List<PostDto> recentPostsWithComments = blogService.getRecentPostsWithComments(userId);
+        return recentPostsWithComments.isEmpty() ? List.of()
+                : recentPostsWithComments.stream()
+                .map(postMapper::toResponse)
+                .toList();
     }
 
-    @GetMapping("/users/{userId}")
-    public Map<Long, PostShortDto> getPostsByAuthor(
-            @PathVariable("userId") Long userId
+    @GetMapping("/activity")
+    public List<PostResponse> getUserActivity(
+            @PathVariable Long userId
     ) {
-        return blogService.getPostsByAuthor(userId);
+        List<PostDto> userActivity = blogService.getUserActivity(userId);
+
+        return userActivity.isEmpty() ? List.of()
+                : userActivity.stream()
+                .map(postMapper::toResponse)
+                .toList();
     }
+
 }

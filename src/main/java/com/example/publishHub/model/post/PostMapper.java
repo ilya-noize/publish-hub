@@ -1,6 +1,8 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.post;
 
 import com.example.publishHub.entity.PostEntity;
+import com.example.publishHub.model.user.UserMapper;
+import com.example.publishHub.model.comment.CommentMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
@@ -14,6 +16,8 @@ import org.mapstruct.MappingConstants;
 )
 public interface PostMapper {
 
+    @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "commentCount", ignore = true)
     @Mapping(target = "author.id", source = "authorId")
     @Mapping(target = "createdAt", ignore = true)
     PostEntity toEntity(PostDto dto);
@@ -21,9 +25,17 @@ public interface PostMapper {
     @Mapping(target = "authorId", source = "author.id")
     PostDto toDomain(PostEntity entity);
 
+    @Mapping(target = "authorId", source = "author.id")
+    PostSimpleDto toSimpleDomain(PostEntity entity);
+
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "authorId", source = "authorId")
-    PostDto toDomain(PostRequest request);
+    PostDto toDomain(PostCreateRequest request);
 
     @Mapping(target = "author.id", source = "authorId")
     PostResponse toResponse(PostDto dto);
+
+    @Mapping(target = "comments", ignore = true)
+    @Mapping(target = "author.id", source = "authorId")
+    PostResponse toResponse(PostSimpleDto dto);
 }

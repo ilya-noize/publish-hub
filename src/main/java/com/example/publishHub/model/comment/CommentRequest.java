@@ -1,4 +1,4 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.comment;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

@@ -1,4 +1,4 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.user;
 
 import com.example.publishHub.entity.UserEntity;
 import org.mapstruct.Mapper;

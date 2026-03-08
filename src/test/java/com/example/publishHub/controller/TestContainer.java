@@ -3,10 +3,10 @@ package com.example.publishHub.controller;
 import com.example.publishHub.entity.CommentEntity;
 import com.example.publishHub.entity.PostEntity;
 import com.example.publishHub.entity.UserEntity;
-import com.example.publishHub.model.CommentDto;
-import com.example.publishHub.model.CommentRequest;
-import com.example.publishHub.model.PostDto;
-import com.example.publishHub.model.PostRequest;
+import com.example.publishHub.model.comment.CommentDto;
+import com.example.publishHub.model.comment.CommentRequest;
+import com.example.publishHub.model.post.PostCreateRequest;
+import com.example.publishHub.model.post.PostDto;
 import com.example.publishHub.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -57,11 +57,10 @@ public class TestContainer {
         return new CommentDto(null, userId, postId, getRandomString());
     }
 
-    protected PostRequest getPostRequest(UserEntity userEntity) {
+    protected PostCreateRequest getPostRequest(UserEntity userEntity) {
         String title = UUID.randomUUID().toString().substring(0, 8);
         String content = getRandomString();
-        return new PostRequest(
-                null,
+        return new PostCreateRequest(
                 title,
                 content,
                 userEntity.getId(),

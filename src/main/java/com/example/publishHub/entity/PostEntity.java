@@ -8,7 +8,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.NamedAttributeNode;
+import jakarta.persistence.NamedEntityGraph;
+import jakarta.persistence.NamedEntityGraphs;
+import jakarta.persistence.NamedSubgraph;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -17,6 +22,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Formula;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -30,6 +36,35 @@ import java.util.StringJoiner;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@NamedEntityGraphs({
+        //Для страницы поста с комментариями
+        @NamedEntityGraph(
+                name = "post-with-comments-and-authors",
+                attributeNodes = {
+                        @NamedAttributeNode(value = "comments", subgraph = "comment-with-user")
+                },
+                subgraphs = @NamedSubgraph(
+                        name = "comment-with-user",
+                        attributeNodes = @NamedAttributeNode("user")
+                )
+        ),
+        //Для ленты с тегами
+        @NamedEntityGraph(
+                name = "post-with-tags",
+                attributeNodes = {
+                        @NamedAttributeNode("tags")
+                }
+        ),
+        //Админка или экспорт данных
+        @NamedEntityGraph(
+                name = "post-full-details",
+                attributeNodes = {
+                        @NamedAttributeNode("author"),
+                        @NamedAttributeNode("comments"),
+                        @NamedAttributeNode("tags")
+                }
+        )
+})
 public class PostEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -66,6 +101,13 @@ public class PostEntity {
             orphanRemoval = true
     )
     private List<CommentEntity> comments = new ArrayList<>();
+
+    @Formula("(SELECT COUNT(*) FROM comments c WHERE c.post_id = id)")
+    private Long commentCount;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    private List<TagEntity> tags = new ArrayList<>();
+
 
     @PrePersist
     void create() {

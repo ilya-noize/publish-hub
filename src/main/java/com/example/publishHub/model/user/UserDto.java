@@ -1,4 +1,6 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.user;
+
+import com.example.publishHub.model.post.PostDto;
 
 import java.util.List;
 

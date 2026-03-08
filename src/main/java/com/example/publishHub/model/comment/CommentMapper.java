@@ -1,6 +1,8 @@
-package com.example.publishHub.model;
+package com.example.publishHub.model.comment;
 
 import com.example.publishHub.entity.CommentEntity;
+import com.example.publishHub.model.post.PostMapper;
+import com.example.publishHub.model.user.UserMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
